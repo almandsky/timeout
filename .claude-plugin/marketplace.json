@@ -1,0 +1,17 @@
+{
+  "name": "timeout-plugin",
+  "owner": {
+    "name": "Sky Chen"
+  },
+  "metadata": {
+    "description": "Break reminder plugin for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "timeout",
+      "source": "./",
+      "description": "Tracks session duration, detects complex tasks, and nudges you to take breaks",
+      "version": "1.8.0"
+    }
+  ]
+}
