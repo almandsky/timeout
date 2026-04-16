@@ -20,56 +20,35 @@ try {
   state.prompt_count = (state.prompt_count || 0) + 1;
   state.last_activity = now;
   state.last_prompt_time = now;
-  state.task_reminder_shown = false;
+  state.last_task_reminder_time = 0; // reset task reminder for new prompt
+  state.task_reminder_shown_this_prompt = false; // reset TaskCreated reminder
+  state.tool_use_count = 0;
 
-  const messages = [];
   const prompt = input.prompt || "";
+  const hookOutput = { hookEventName: "UserPromptSubmit" };
+  let systemMsg = null;
 
-  // --- Primary: Let Claude estimate task duration on every prompt ---
   if (prompt.length > 0) {
-    messages.push(
-      `[Timeout Plugin] Before responding, quickly estimate how long this task will take you to complete. ` +
-      `If your estimate is 3 minutes or more: ` +
-      `(1) Tell the user your estimate in one sentence, ` +
-      `(2) clarify any requirements if needed, ` +
-      `(3) tell the user you'll start a timer with /break <minutes> once they confirm and you begin working. ` +
-      `When the user confirms and you start the actual work, open the timer by running: open "https://www.google.com/search?q=timer+for+N+minutes" (replace N with your estimate). ` +
-      `If the task is quick (under 3 minutes), say nothing about breaks and just do the work.`
-    );
-  }
+    // Best-effort: ask Claude to estimate and auto-launch timer
+    hookOutput.additionalContext =
+      `[Timeout Plugin — IMPORTANT] Before doing ANYTHING else, estimate how long this task will take. ` +
+      `If 3+ minutes: (1) tell the user your estimate in one sentence, ` +
+      `(2) immediately open a timer by running: open "https://www.google.com/search?q=timer+for+N+minutes" (replace N with your estimate), ` +
+      `(3) then proceed with the work. Do NOT ask for confirmation — just start the timer and begin working. ` +
+      `If quick (under 3 min), say nothing about breaks. ` +
+      `This is your FIRST priority before any other action.`;
 
-  // --- Secondary: Session duration reminders ---
-  const elapsed = now - (state.session_start || now);
-  const elapsedMinutes = elapsed / 60;
-  const thresholds = config.reminder_thresholds_minutes || [30, 60];
-  let lastLevel = state.last_reminder_level || 0;
-
-  for (let i = 0; i < thresholds.length; i++) {
-    const level = i + 1;
-    if (elapsedMinutes >= thresholds[i] && lastLevel < level) {
-      const duration = formatDuration(elapsed);
-      if (level === 1) {
-        messages.push(
-          `[Timeout Plugin] This session has been active for ${duration}. ` +
-          `Gently mention it might be a good time for a short break. ` +
-          `Mention /break. Keep it brief.`
-        );
-      } else {
-        const breakMin = config.default_break_minutes || 5;
-        messages.push(
-          `[Timeout Plugin] This session has been active for ${duration}. ` +
-          `Recommend a ${breakMin}-minute break. Suggest /break.`
-        );
-      }
-      state.last_reminder_level = level;
+    // Reliable: always show a visible reminder for non-trivial prompts
+    if (prompt.length > 30) {
+      systemMsg =
+        `⏰ [Timeout] New task received. If this takes a while, use /break to set a timer.`;
     }
   }
 
   saveState(state);
-
-  const hookOutput = { hookEventName: "UserPromptSubmit" };
-  if (messages.length) hookOutput.additionalContext = messages.join("\n\n");
-  output({ hookSpecificOutput: hookOutput });
+  const result = { hookSpecificOutput: hookOutput };
+  if (systemMsg) result.systemMessage = systemMsg;
+  output(result);
 } catch {
   output({ continue: true });
 }

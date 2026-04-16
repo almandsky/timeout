@@ -1,6 +1,6 @@
 {
   "name": "timeout",
-  "version": "1.8.0",
+  "version": "2.2.0",
   "description": "Encourages healthy work breaks during AI coding sessions by tracking session duration, estimating task complexity, and nudging you to step away with a timer",
   "author": {
     "name": "Sky Chen"

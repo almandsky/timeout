@@ -17,30 +17,41 @@ try {
   }
 
   const now = Date.now() / 1000;
+  state.tool_use_count = (state.tool_use_count || 0) + 1;
   state.last_activity = now;
-
-  // Track time since last user prompt (i.e., how long Claude has been working)
-  const taskStart = state.last_prompt_time || state.session_start || now;
-  const taskElapsed = now - taskStart;
-  const taskMinutes = taskElapsed / 60;
 
   const result = { continue: true };
 
-  // If Claude has been working for 3+ minutes and we haven't reminded yet for this task
-  if (taskMinutes >= 3 && !state.task_reminder_shown) {
+  // --- Task-level reminder: time since last user prompt ---
+  const taskStart = state.last_prompt_time || state.session_start || now;
+  const taskMinutes = (now - taskStart) / 60;
+  const lastTaskReminder = state.last_task_reminder_time || 0;
+  const taskReminderCooldown = 3; // remind every 3 minutes of continuous work
+
+  if (taskMinutes >= 3 && (now - lastTaskReminder) / 60 >= taskReminderCooldown) {
     const rounded = Math.round(taskMinutes);
+    // systemMessage shows directly in the user's terminal — no Claude dependency
     result.systemMessage =
-      `[Timeout] Claude has been working for ${rounded} minutes. ` +
-      `You can step away — use /break ${rounded + 2} to set a timer.`;
+      `⏰ [Timeout] Claude has been working for ${rounded} minutes. ` +
+      `Step away — use /break ${Math.min(rounded + 2, 15)} to set a timer.`;
 
-    result.hookSpecificOutput = {
-      hookEventName: "PostToolUse",
-      additionalContext:
-        `[Timeout Plugin] You have been working on this task for ${rounded} minutes. ` +
-        `Briefly remind the user they can step away while you continue — mention /break. One sentence max.`,
-    };
+    state.last_task_reminder_time = now;
+  }
 
-    state.task_reminder_shown = true;
+  // --- Session-level reminder: total session time ---
+  const sessionMinutes = (now - (state.session_start || now)) / 60;
+  const thresholds = config.reminder_thresholds_minutes || [30, 60];
+  let lastLevel = state.session_reminder_level || 0;
+
+  for (let i = 0; i < thresholds.length; i++) {
+    const level = i + 1;
+    if (sessionMinutes >= thresholds[i] && lastLevel < level) {
+      const duration = formatDuration(now - state.session_start);
+      result.systemMessage =
+        `⏰ [Timeout] Session active for ${duration}. ` +
+        `Time for a break — use /break to set a timer.`;
+      state.session_reminder_level = level;
+    }
   }
 
   saveState(state);
