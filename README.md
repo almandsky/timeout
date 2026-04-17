@@ -13,10 +13,11 @@ Restart your Claude Code session to activate.
 
 ## How It Works
 
-1. **You send a task** — Claude estimates how long it will take.
-2. **Auto timer** — If 3+ minutes, Claude opens a Google timer in your browser and starts working immediately. No confirmation needed.
-3. **Terminal reminders** — While Claude works, you'll see `⏰ [Timeout]` reminders every 3 minutes in your terminal if you're still watching.
-4. **Session reminders** — After 30 and 60 minutes of continuous session time, you'll get a nudge to take a break.
+1. **You send a task** — Claude estimates how long it will take. For prompts longer than a few words, you'll see a `⏰ [Timeout]` system message reminding you that `/break` is available.
+2. **Auto timer** — If the estimate is 3+ minutes, Claude opens a Google timer in your browser and starts working immediately. No confirmation needed.
+3. **Multi-step work** — When Claude creates sub-tasks, you'll get a one-time reminder per prompt to step away while it plans.
+4. **Task reminders** — While Claude works on a single task, you'll see `⏰ [Timeout]` reminders every 3 minutes in your terminal.
+5. **Session reminders** — After 30 and 60 minutes of continuous session time, you'll get a nudge to take a break.
 
 ## Skills
 
@@ -40,4 +41,9 @@ Run `/timeout-settings` or edit `~/.timeout-plugin/config.json`:
 
 ```bash
 claude plugin uninstall timeout@timeout-plugin
+rm -rf ~/.timeout-plugin
 ```
+
+## Privacy
+
+This plugin stores only timestamps and counters locally in `~/.timeout-plugin/`. No conversation content, code, or personal data is collected or transmitted. See [PRIVACY.md](PRIVACY.md) for details.
